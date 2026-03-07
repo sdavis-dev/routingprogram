@@ -69,13 +69,27 @@ def load_distances(filename):
     with open(filename, "r", encoding = 'utf-8-sig') as file:
         reader = csv.reader(file)
         for row in reader:
-            if row and len(row) > 2 and row[2].strip() != "":
-                cleaned_row = []
+            if row and "DISTANCE BETWEEN HUBS IN MILES" in row[0]: # this fixes the reading issue by the actual header now
+                start_reading = True
+                continue
             
-                for value in row[2:]:
-                    cleaned_row.append(value.strip())
+            if start_reading:
+                if not row or row[0].strip() == "": # skip blanks
+                    continue
+            
+            numeric_found = False
+            for cell in row:
+                try:
+                    float(cell)
+                    numeric_found = True
+                    break
+                except:
+                    continue
 
+            if numeric_found:
+                cleaned_row = [value.strip() for value in row[2:]]
                 distances.append(cleaned_row)
+
     return distances
 
 class Truck:
@@ -92,10 +106,10 @@ def convert_time(t):
         return f"{hours:02d}:{minutes:02d}"
     
 def get_distance(distances, i, j):
-        d = distances[i][j + 1]
+        d = distances[i][j]
 
         if d == '' or d is None:
-            d = distances[j][i + 1]
+            d = distances[j][i]
         d = str(d).strip()
         if d == '':
             return 0.0
@@ -135,10 +149,18 @@ def nearest_neighbor(truck, distances, addresses):
 
             if pkg_index is None:
                 continue # this allows a skip if address is not found
+            
+            if pkg_index == current:
+                continue
+
             d = get_distance(distances, current, pkg_index)
+
             if d < shortest:
                 shortest = d
                 closest_pkg = pkg
+
+        if closest_pkg is None:
+            break
 
         travel_time = shortest / 18.0 # Assuming average speed of 18 mph
         truck.time += travel_time
@@ -168,8 +190,8 @@ distances = load_distances("WGUPS Distance Table.csv")
     else:
         print("Missing package:", i)"""
 
-print("Total addresses loaded:", len(addresses)) # loads 27 addresses
-print(addresses[:5])
+"""print("Total addresses loaded:", len(addresses)) # loads 27 addresses
+print(addresses[:5]) """
 
 """print("Distance rows:", len(distances)) # come back, rows supposed to match number of addresses
 print("Distance columns in row 0:", len(distances[0]))"""
@@ -181,9 +203,9 @@ print("package address:", pkg.address)
 print("Mapped index:", index)
 print("Address at that index:", addresses[index] if index is not None else "Not found")"""
 
-print("Address couont:", len(addresses))
+"""print("Address couont:", len(addresses))
 print("Distance rows:", len(distances))
-print("Distance columns in row 0:", len(distances[0]))
+print("Distance columns in row 0:", len(distances[0]))"""
 
 """truck1 = Truck("truck1")
 nearest_neighbor(truck1, distances, addresses)
@@ -193,4 +215,51 @@ for pkg in [package_table.lookup("1"), package_table.lookup("13")]:
 
 print("Truck miles:", truck1.miles)
 print("Truck time:", convert_time(truck1.time)) """
+
+"""print("Hub:", addresses[0])
+print("First location:", addresses[1])
+
+print("Distance HUB to location 1:", get_distance(distances, 0, 1))
+
+print(len(distances))
+print(len(distances[0]))
+print(distances[0][:10])
+print(distances[1][:10])
+
+nearest_neighbor(truck1, distances, addresses)
+print("Truck miles:", truck1.miles)"""
+
+# Create trucks
+truck1 = Truck("1", 8.0)
+truck2 = Truck("2", 9.05)
+truck3 = Truck("3", 10.20)
+
+# Load packages onto trucks (temporary example)
+for i in range(1, 15):
+    pkg = package_table.lookup(str(i))
+    if pkg:
+        truck1.packages.append(pkg)
+
+for i in range(15, 30):
+    pkg = package_table.lookup(str(i))
+    if pkg:
+        truck2.packages.append(pkg)
+
+for i in range(30, 41):
+    pkg = package_table.lookup(str(i))
+    if pkg:
+        truck3.packages.append(pkg)
+
+# Run routing algorithm
+nearest_neighbor(truck1, distances, addresses)
+nearest_neighbor(truck2, distances, addresses)
+nearest_neighbor(truck3, distances, addresses)
+
+# Print mileage results
+print("Truck 1 miles:", truck1.miles)
+print("Truck 2 miles:", truck2.miles)
+print("Truck 3 miles:", truck3.miles)
+
+total_miles = truck1.miles + truck2.miles + truck3.miles
+print("Total miles:", total_miles)
 
