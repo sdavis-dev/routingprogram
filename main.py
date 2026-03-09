@@ -16,6 +16,8 @@ class Package:
         self.weight = weight
         self.status = "at the hub"
         self.delivery_time = None
+        self.address_index = None
+        self.departure_time = None
 
 # Hashtable class for the package 
 class HashTable:
@@ -104,7 +106,11 @@ def convert_time(t):
         hours = int(t)
         minutes = int((t - hours) * 60)
         return f"{hours:02d}:{minutes:02d}"
-    
+
+def time_to_float(time_str):
+    hours, minutes = map(int, time_str.split(":"))
+    return hours + minutes / 60
+
 def get_distance(distances, i, j):
         d = distances[i][j]
 
@@ -249,6 +255,15 @@ for i in range(30, 41):
     pkg = package_table.lookup(str(i))
     if pkg:
         truck3.packages.append(pkg)
+
+for pkg in truck1.packages:
+    pkg.departure_time = truck1.time
+
+for pkg in truck2.packages:
+    pkg.departure_time = truck2.time
+
+for pkg in truck3.packages:
+    pkg.departure_time = truck3.time
 
 # Run routing algorithm
 nearest_neighbor(truck1, distances, addresses)
