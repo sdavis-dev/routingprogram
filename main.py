@@ -112,14 +112,62 @@ def time_to_float(time_str):
     return hours + minutes / 60
 
 def get_distance(distances, i, j):
-        d = distances[i][j]
+    d = distances[i][j]
 
-        if d == '' or d is None:
-            d = distances[j][i]
-        d = str(d).strip()
-        if d == '':
-            return 0.0
-        return float(d)
+    if d == '' or d is None:
+        d = distances[j][i]
+
+    d = str(d).strip()
+
+    if d == '':
+        return 0.0
+    
+    return float(d)
+
+def get_package_status(pkg, query_time):
+    if pkg.departure_time is None or query_time < pkg.departure_time:
+        return "at the hub"
+    
+    deliver_time = time_to_float(pkg.delivery_time)
+
+    if query_time < deliver_time:
+        return "en route"
+    
+    return f"Delivered at {pkg.delivery_time}"
+
+def print_all_status(package_table, query_time):
+    for bucket in package_table.table:
+        for pkg in bucket:
+
+            status = get_package_status(pkg, query_time)
+
+            print(
+                "Package:", pkg.id,
+                "| Address:", pkg.address,
+                "| Deadline:", pkg.deadline,
+                "| City:", pkg.city,
+                "| Weight:", pkg.weight,
+                "| Status:", status
+            )
+
+def lookup_single_package(package_table, package_id, query_time):
+    pkg = package_table.lookup(package_id)
+
+    if pkg is None:
+        print("Package not found.")
+        return
+    
+    status = get_package_status(pkg, query_time)
+
+    print(
+        "Package:", pkg.id,
+        "| Address:", pkg.address,
+        "| Deadline:", pkg.deadline,
+        "| City:", pkg.city,
+        "| Zip:", pkg.zip_code,
+        "| Weight:", pkg.weight,
+        "| Status:", status
+    )
 
 def load_addresses(filename):
     addresses = []
@@ -277,4 +325,34 @@ print("Truck 3 miles:", truck3.miles)
 
 total_miles = truck1.miles + truck2.miles + truck3.miles
 print("Total miles:", total_miles)
+
+while True:
+
+    print("\nWGUPS Routing System")
+    print("1 - View All Package Status")
+    print("2 - Lookup Package by ID")
+    print("3 - Exit")
+
+    choice = input("Enter choice: ")
+
+    if choice == "1":
+        user_time = input("Enter time (HH:MM): ")
+        query_time = time_to_float(user_time)
+
+        print_all_status(package_table, query_time)
+
+    elif choice == "2":
+        user_time = input("Enter time (HH:MM): ")
+        query_time = time_to_float(user_time)
+
+        package_id = input("Enter package ID: ")
+
+        lookup_single_package(package_table, package_id, query_time)
+
+    elif choice == "3":
+        break
+
+    else:
+        print("Invalid choice. Please try again.")
+
 
