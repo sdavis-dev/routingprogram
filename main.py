@@ -94,6 +94,22 @@ def load_distances(filename):
 
     return distances
 
+def load_addresses(filename):
+    addresses = []
+    address_dict = {}
+    
+    with open(filename, "r", encoding = 'utf-8-sig') as file:
+        reader = csv.reader(file)
+
+        for row in reader:
+            if row and len(row) > 1:
+                address = row[1].strip()
+            
+                if address != "" and "HUB" not in address:
+                    address = address.split("\n")[0]
+                    address_dict[address] = len(addresses)
+                    addresses.append(address)
+    return addresses, address_dict
 class Truck:
     def __init__(self, name, start_time = 8.0):
         self.name = name
@@ -124,9 +140,28 @@ def get_distance(distances, i, j):
     
     return float(d)
 
+def address_index(addresses, address):
+    for i in range(len(addresses)):
+        if address in addresses[i]:
+            return i
+    return None
+
+def update_package_9(package_table, address_dict):
+    pkg9 = package_table.lookup("9")
+
+    if pkg9:
+        pkg9.address = "410 S State St"
+        pkg9.city = "Salt Lake City"
+        pkg9.zip_code = "84111"
+
+        pkg9.address_index = address_dict.get(pkg9.address)
+
 def get_package_status(pkg, query_time):
     if pkg.departure_time is None or query_time < pkg.departure_time:
         return "at the hub"
+    
+    if pkg.delivery_time is None:
+        return "en route"
     
     deliver_time = time_to_float(pkg.delivery_time)
 
@@ -135,10 +170,10 @@ def get_package_status(pkg, query_time):
     
     return f"Delivered at {pkg.delivery_time}"
 
-def print_all_status(package_table, query_time):
+def print_all_status(package_table, query_time, address_dict):
     for bucket in package_table.table:
         for pkg in bucket:
-
+            pkg.address_index = address_dict.get(pkg.address)
             status = get_package_status(pkg, query_time)
 
             print(
@@ -168,28 +203,6 @@ def lookup_single_package(package_table, package_id, query_time):
         "| Weight:", pkg.weight,
         "| Status:", status
     )
-
-def load_addresses(filename):
-    addresses = []
-    start_reading = False
-    
-    with open(filename, "r", encoding = 'utf-8-sig') as file:
-        reader = csv.reader(file)
-
-        for row in reader:
-            if row and len(row) > 1:
-                address = row[1].strip()
-            
-            if address != "" and "HUB" not in address:
-                address = address.split("\n")[0]
-                addresses.append(address)
-    return addresses
-
-def address_index(addresses, address):
-    for i in range(len(addresses)):
-        if address in addresses[i]:
-            return i
-    return None
 
 def nearest_neighbor(truck, distances, addresses):
     current = 0 # Start at the hub
@@ -231,7 +244,7 @@ def main():
 
     package_table = HashTable()
     load_packages("WGUPS Package File.csv", package_table)
-    addresses = load_addresses("WGUPS Distance Table.csv")
+    addresses, address_dict = load_addresses("WGUPS Distance Table.csv")
     distances = load_distances("WGUPS Distance Table.csv")
 
     # Create trucks
@@ -267,6 +280,9 @@ def main():
     # Run routing algorithm
     nearest_neighbor(truck1, distances, addresses)
     nearest_neighbor(truck2, distances, addresses)
+
+    update_package_9(package_table, address_dict)
+
     nearest_neighbor(truck3, distances, addresses)
 
     # Print mileage results
@@ -290,7 +306,7 @@ def main():
             user_time = input("Enter time (HH:MM): ")
             query_time = time_to_float(user_time)
 
-            print_all_status(package_table, query_time)
+            print_all_status(package_table, query_time, address_dict)
 
         elif choice == "2":
             user_time = input("Enter time (HH:MM): ")
