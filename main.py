@@ -227,132 +227,86 @@ def nearest_neighbor(truck, distances, addresses):
         current = truck.current_location
         truck.packages.remove(closest_pkg)
 
-        """print(f"Truck {truck.name} delivering package {closest_pkg.id}")
-        print(f"Distance traveled: {shortest}")
-        print(f"Arrival time: {convert_time(truck.time)}")
-        print("-" * 30) """
+def main():
 
-package_table = HashTable()
-load_packages("WGUPS Package File.csv", package_table)
-addresses = load_addresses("WGUPS Distance Table.csv")
-distances = load_distances("WGUPS Distance Table.csv")
+    package_table = HashTable()
+    load_packages("WGUPS Package File.csv", package_table)
+    addresses = load_addresses("WGUPS Distance Table.csv")
+    distances = load_distances("WGUPS Distance Table.csv")
 
-"""for i in range(1, 41): # testing for all 40 packages printing
-    pkg = package_table.lookup(str(i))
-    if pkg:
-        print(pkg.id, pkg.address, pkg.status)
-    else:
-        print("Missing package:", i)"""
+    # Create trucks
+    truck1 = Truck("1", 8.0)
+    truck2 = Truck("2", 9.05)
+    truck3 = Truck("3", 10.20)
 
-"""print("Total addresses loaded:", len(addresses)) # loads 27 addresses
-print(addresses[:5]) """
+    # Load packages onto trucks (temporary example)
+    for i in range(1, 15):
+        pkg = package_table.lookup(str(i))
+        if pkg:
+            truck1.packages.append(pkg)
 
-"""print("Distance rows:", len(distances)) # come back, rows supposed to match number of addresses
-print("Distance columns in row 0:", len(distances[0]))"""
+    for i in range(15, 30):
+        pkg = package_table.lookup(str(i))
+        if pkg:
+            truck2.packages.append(pkg)
 
-"""pkg = package_table.lookup("2") # checks for address mapping
-index = address_index(addresses, pkg.address)
+    for i in range(30, 41):
+        pkg = package_table.lookup(str(i))
+        if pkg:
+            truck3.packages.append(pkg)
 
-print("package address:", pkg.address)
-print("Mapped index:", index)
-print("Address at that index:", addresses[index] if index is not None else "Not found")"""
+    for pkg in truck1.packages:
+        pkg.departure_time = truck1.time
 
-"""print("Address couont:", len(addresses))
-print("Distance rows:", len(distances))
-print("Distance columns in row 0:", len(distances[0]))"""
+    for pkg in truck2.packages:
+        pkg.departure_time = truck2.time
 
-"""truck1 = Truck("truck1")
-nearest_neighbor(truck1, distances, addresses)
+    for pkg in truck3.packages:
+        pkg.departure_time = truck3.time
 
-for pkg in [package_table.lookup("1"), package_table.lookup("13")]:
-    print(pkg.id, pkg.status, pkg.delivery_time)
+    # Run routing algorithm
+    nearest_neighbor(truck1, distances, addresses)
+    nearest_neighbor(truck2, distances, addresses)
+    nearest_neighbor(truck3, distances, addresses)
 
-print("Truck miles:", truck1.miles)
-print("Truck time:", convert_time(truck1.time)) """
+    # Print mileage results
+    print("Truck 1 miles:", truck1.miles)
+    print("Truck 2 miles:", truck2.miles)
+    print("Truck 3 miles:", truck3.miles)
 
-"""print("Hub:", addresses[0])
-print("First location:", addresses[1])
+    total_miles = truck1.miles + truck2.miles + truck3.miles
+    print("Total miles:", total_miles)
 
-print("Distance HUB to location 1:", get_distance(distances, 0, 1))
+    while True:
 
-print(len(distances))
-print(len(distances[0]))
-print(distances[0][:10])
-print(distances[1][:10])
+        print("\nWGUPS Routing System")
+        print("1 - View All Package Status")
+        print("2 - Lookup Package by ID")
+        print("3 - Exit")
 
-nearest_neighbor(truck1, distances, addresses)
-print("Truck miles:", truck1.miles)"""
+        choice = input("Enter choice: ")
 
-# Create trucks
-truck1 = Truck("1", 8.0)
-truck2 = Truck("2", 9.05)
-truck3 = Truck("3", 10.20)
+        if choice == "1":
+            user_time = input("Enter time (HH:MM): ")
+            query_time = time_to_float(user_time)
 
-# Load packages onto trucks (temporary example)
-for i in range(1, 15):
-    pkg = package_table.lookup(str(i))
-    if pkg:
-        truck1.packages.append(pkg)
+            print_all_status(package_table, query_time)
 
-for i in range(15, 30):
-    pkg = package_table.lookup(str(i))
-    if pkg:
-        truck2.packages.append(pkg)
+        elif choice == "2":
+            user_time = input("Enter time (HH:MM): ")
+            query_time = time_to_float(user_time)
 
-for i in range(30, 41):
-    pkg = package_table.lookup(str(i))
-    if pkg:
-        truck3.packages.append(pkg)
+            package_id = input("Enter package ID: ")
 
-for pkg in truck1.packages:
-    pkg.departure_time = truck1.time
+            lookup_single_package(package_table, package_id, query_time)
 
-for pkg in truck2.packages:
-    pkg.departure_time = truck2.time
+        elif choice == "3":
+            break
 
-for pkg in truck3.packages:
-    pkg.departure_time = truck3.time
+        else:
+            print("Invalid choice. Please try again.")
 
-# Run routing algorithm
-nearest_neighbor(truck1, distances, addresses)
-nearest_neighbor(truck2, distances, addresses)
-nearest_neighbor(truck3, distances, addresses)
-
-# Print mileage results
-print("Truck 1 miles:", truck1.miles)
-print("Truck 2 miles:", truck2.miles)
-print("Truck 3 miles:", truck3.miles)
-
-total_miles = truck1.miles + truck2.miles + truck3.miles
-print("Total miles:", total_miles)
-
-while True:
-
-    print("\nWGUPS Routing System")
-    print("1 - View All Package Status")
-    print("2 - Lookup Package by ID")
-    print("3 - Exit")
-
-    choice = input("Enter choice: ")
-
-    if choice == "1":
-        user_time = input("Enter time (HH:MM): ")
-        query_time = time_to_float(user_time)
-
-        print_all_status(package_table, query_time)
-
-    elif choice == "2":
-        user_time = input("Enter time (HH:MM): ")
-        query_time = time_to_float(user_time)
-
-        package_id = input("Enter package ID: ")
-
-        lookup_single_package(package_table, package_id, query_time)
-
-    elif choice == "3":
-        break
-
-    else:
-        print("Invalid choice. Please try again.")
+if __name__ == "__main__":
+    main()
 
 
