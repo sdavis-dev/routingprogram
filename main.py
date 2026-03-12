@@ -1,9 +1,8 @@
-# Student ID: 010256107
+# Student ID: 010256107 - (Task C1)
 
-# import statements for csv file imports and GUI implementation
+# import statements for csv file imports
 import csv
 import tkinter as tk
-from tkinter import ttk
 
 # Package class for each package's details and status
 class Package:
@@ -19,7 +18,7 @@ class Package:
         self.address_index = None
         self.departure_time = None
 
-# Hashtable class for the package 
+# Hashtable class for the package (Task A)
 class HashTable:
     def __init__(self, size = 40):
         self.table = [[] for _ in range(size)]
@@ -31,14 +30,14 @@ class HashTable:
         index = self._hash(package.id)
         self.table[index].append(package)
     
-    def lookup(self, id): # lookup function that return components of the package with the given id
+    def lookup(self, id): # lookup function that return components of the package with the given id (B)
         index = self._hash(id)
         for package in self.table[index]:
             if package.id == id:
                 return package
         return None
     
-def load_packages(filename, table):
+def load_packages(filename, table): # CSV loader function for the package file
     with open(filename, 'r', encoding = 'utf-8-sig') as file:
         reader = csv.reader(file)
         
@@ -64,7 +63,7 @@ def load_packages(filename, table):
                 )
             table.insert(package)
 
-def load_distances(filename):
+def load_distances(filename): # CSV loader function for the distance table
     distances = []
     start_reading = False
 
@@ -94,7 +93,7 @@ def load_distances(filename):
 
     return distances
 
-def load_addresses(filename):
+def load_addresses(filename): # loads addresses from distance table
     addresses = []
     address_dict = {}
     
@@ -110,7 +109,7 @@ def load_addresses(filename):
                     address_dict[address] = len(addresses)
                     addresses.append(address)
     return addresses, address_dict
-class Truck:
+class Truck: # Truck class 
     def __init__(self, name, start_time = 8.0):
         self.name = name
         self.packages = []
@@ -118,16 +117,16 @@ class Truck:
         self.time = start_time
         self.current_location = 0 # The hub index
 
-def convert_time(t):
+def convert_time(t): # Converts time to HH:MM
         hours = int(t)
         minutes = int((t - hours) * 60)
         return f"{hours:02d}:{minutes:02d}"
 
-def time_to_float(time_str):
+def time_to_float(time_str): # Converts HH:MM to decimal time
     hours, minutes = map(int, time_str.split(":"))
     return hours + minutes / 60
 
-def get_distance(distances, i, j):
+def get_distance(distances, i, j): # 
     d = distances[i][j]
 
     if d == '' or d is None:
@@ -140,13 +139,13 @@ def get_distance(distances, i, j):
     
     return float(d)
 
-def address_index(addresses, address):
+def address_index(addresses, address): #
     for i in range(len(addresses)):
         if address in addresses[i]:
             return i
     return None
 
-def update_package_9(package_table, address_dict):
+def update_package_9(package_table, address_dict): # updates address for pkg 9
     pkg9 = package_table.lookup("9")
 
     if pkg9:
@@ -156,7 +155,7 @@ def update_package_9(package_table, address_dict):
 
         pkg9.address_index = address_dict.get(pkg9.address)
 
-def get_package_status(pkg, query_time):
+def get_package_status(pkg, query_time): # pkg status at given time
     if pkg.departure_time is None or query_time < pkg.departure_time:
         return "at the hub"
     
@@ -293,7 +292,7 @@ def main():
     total_miles = truck1.miles + truck2.miles + truck3.miles
     print("Total miles:", total_miles)
 
-    while True:
+    while True: # UI menu
 
         print("\nWGUPS Routing System")
         print("1 - View All Package Status")
@@ -305,6 +304,8 @@ def main():
         if choice == "1":
             user_time = input("Enter time (HH:MM): ")
             query_time = time_to_float(user_time)
+
+            print("\nPackage Status at", user_time)
 
             print_all_status(package_table, query_time, address_dict)
 
