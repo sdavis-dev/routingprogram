@@ -2,7 +2,6 @@
 
 # import statements for csv file imports
 import csv
-import tkinter as tk
 
 # Package class for each package's details and status
 class Package:
@@ -17,6 +16,7 @@ class Package:
         self.delivery_time = None
         self.address_index = None
         self.departure_time = None
+        self.truck = None
 
 # Hashtable class for the package (Task A)
 class HashTable:
@@ -122,9 +122,26 @@ def convert_time(t): # Converts time to HH:MM
         minutes = int((t - hours) * 60)
         return f"{hours:02d}:{minutes:02d}"
 
-def time_to_float(time_str): # Converts HH:MM to decimal time
-    hours, minutes = map(int, time_str.split(":"))
+def time_to_float(time_str): # Converts HH:MM to decimal time, updated for AM/PM
+    if time_str == "EOD":
+        return 24.0
+    
+    time_str = time_str.strip()
+
+    if "AM" in time_str or "PM" in time_str:
+        time_part, period = time_str.split(" ")
+        hours, minutes = map(int, time_part.split(":")) # splits time
+
+        if period == "PM" and hours != 12: # 24 hr format conversion
+            hours += 12
+        if period == "AM" and hours == 12:
+            hours = 0
+    else:
+        hours, minutes = map(int, time_str.split(":"))
+
     return hours + minutes / 60
+
+
 
 def get_distance(distances, i, j): # 
     d = distances[i][j]
@@ -145,17 +162,13 @@ def address_index(addresses, address): #
             return i
     return None
 
-def update_package_9(package_table, address_dict): # updates address for pkg 9
-    pkg9 = package_table.lookup("9")
+delayed_packages = {"6", "25", "28", "32"}
 
-    if pkg9:
-        pkg9.address = "410 S State St"
-        pkg9.city = "Salt Lake City"
-        pkg9.zip_code = "84111"
+def get_package_status(pkg, query_time, address_dict): # updated version of get_package_status()
+    if pkg.id in delayed_packages:
+        if query_time < time_to_float("9:05"):
+            return "delayed on flight" # need a fix for pkg 6, unrealistic delivery time
 
-        pkg9.address_index = address_dict.get(pkg9.address)
-
-def get_package_status(pkg, query_time): # pkg status at given time
     if pkg.departure_time is None or query_time < pkg.departure_time:
         return "at the hub"
     
@@ -168,40 +181,50 @@ def get_package_status(pkg, query_time): # pkg status at given time
         return "en route"
     
     return f"Delivered at {pkg.delivery_time}"
+def get_display_address(pkg, query_time):
+    if pkg.id == "9" and query_time >= time_to_float("10:20"):
+        return "410 S State St", "Salt Lake City", "84111"
+    return pkg.address, pkg.city, pkg.zip_code
 
 def print_all_status(package_table, query_time, address_dict):
     for bucket in package_table.table:
         for pkg in bucket:
-            pkg.address_index = address_dict.get(pkg.address)
-            status = get_package_status(pkg, query_time)
+            status = get_package_status(pkg, query_time, address_dict)
+            address, city, zip_code = get_display_address(pkg, query_time)
 
             print(
                 "Package:", pkg.id,
-                "| Address:", pkg.address,
+                "| Truck:", pkg.truck,
+                "| Address:", address,
                 "| Deadline:", pkg.deadline,
-                "| City:", pkg.city,
+                "| City:", city,
                 "| Weight:", pkg.weight,
                 "| Status:", status
             )
 
-def lookup_single_package(package_table, package_id, query_time):
+def lookup_single_package(package_table, package_id, query_time, address_dict):
     pkg = package_table.lookup(package_id)
 
     if pkg is None:
         print("Package not found.")
         return
     
-    status = get_package_status(pkg, query_time)
+    status = get_package_status(pkg, query_time, address_dict)
+    address, city, zip_code = get_display_address(pkg, query_time)
 
     print(
         "Package:", pkg.id,
-        "| Address:", pkg.address,
+        "| Truck:", pkg.truck,
+        "| Address:", address,
         "| Deadline:", pkg.deadline,
-        "| City:", pkg.city,
-        "| Zip:", pkg.zip_code,
+        "| City:", city,
+        "| Zip:", zip_code,
         "| Weight:", pkg.weight,
         "| Status:", status
     )
+
+def deadline_to_float(deadline):
+    return time_to_float(deadline)
 
 def nearest_neighbor(truck, distances, addresses):
     current = 0 # Start at the hub
@@ -209,21 +232,36 @@ def nearest_neighbor(truck, distances, addresses):
     while truck.packages:
         closest_pkg = None
         shortest = float("inf")
-
+        best_score = float("inf")
+        
         for pkg in truck.packages:
-            pkg_index = address_index(addresses, pkg.address)
+            if pkg.id in delayed_packages and truck.time < 9.05: # delayed packages to be skipped until 9:05
+                continue
 
-            if pkg_index is None:
-                continue # this allows a skip if address is not found
-            
-            if pkg_index == current:
+            pkg_index = address_index(addresses, pkg.address)
+            if pkg_index is None or pkg_index == current:
                 continue
 
             d = get_distance(distances, current, pkg_index)
+            deadline = deadline_to_float(pkg.deadline)
+            time_remaining = deadline - truck.time
 
-            if d < shortest:
-                shortest = d
+            # urgency for scoring - the lower, the more urgent. add if missed
+            eta = truck.time + d / 18.0 
+            late_penalty = 1000.0 if eta > deadline else 0.0
+            urgency = 1.0 / max(deadline - truck.time, 0.01)
+
+            if pkg.id in delayed_packages and truck.time >= 9.05:
+                priority_boost = -200
+            else:
+                priority_boost = 0
+
+            score = d / 18.0 + urgency * 0.3 + late_penalty + priority_boost
+
+            if score < best_score:
+                best_score = score
                 closest_pkg = pkg
+                shortest = d
 
         if closest_pkg is None:
             break
@@ -246,41 +284,53 @@ def main():
     addresses, address_dict = load_addresses("WGUPS Distance Table.csv")
     distances = load_distances("WGUPS Distance Table.csv")
 
+    distances = load_distances("WGUPS Distance Table.csv")
+    addresses, address_dict = load_addresses("WGUPS Distance Table.csv")
+
     # Create trucks
     truck1 = Truck("1", 8.0)
     truck2 = Truck("2", 9.05)
     truck3 = Truck("3", 10.20)
+    
+    # manual truck loading to meet deadlines better
+    truck1_ids = [
+        "15",                           
+        "1", "13", "14", "16", "19", "20", "29", "30", "31", "34", "37", "40",
+    ]
 
-    # Load packages onto trucks (temporary example)
-    for i in range(1, 15):
-        pkg = package_table.lookup(str(i))
+    truck2_ids = [
+        "3", "6", "18", "25", "26", "28", "32", "33", "35", "36", "38", "39"
+    ]
+
+    truck3_ids = [
+        "2", "4", "5", "7", "8", "9", "10", "11", "12", "17", "21",
+        "22", "23", "24", "27"
+    ]
+
+    for pid in truck1_ids:
+        pkg = package_table.lookup(pid)
         if pkg:
+            pkg.truck = truck1.name
+            pkg.departure_time = truck1.time
             truck1.packages.append(pkg)
-
-    for i in range(15, 30):
-        pkg = package_table.lookup(str(i))
+    
+    for pid in truck2_ids:
+        pkg = package_table.lookup(pid)
         if pkg:
+            pkg.truck = truck2.name
+            pkg.departure_time = truck2.time
             truck2.packages.append(pkg)
-
-    for i in range(30, 41):
-        pkg = package_table.lookup(str(i))
+    
+    for pid in truck3_ids:
+        pkg = package_table.lookup(pid)
         if pkg:
+            pkg.truck = truck3.name
+            pkg.departure_time = truck3.time
             truck3.packages.append(pkg)
-
-    for pkg in truck1.packages:
-        pkg.departure_time = truck1.time
-
-    for pkg in truck2.packages:
-        pkg.departure_time = truck2.time
-
-    for pkg in truck3.packages:
-        pkg.departure_time = truck3.time
 
     # Run routing algorithm
     nearest_neighbor(truck1, distances, addresses)
     nearest_neighbor(truck2, distances, addresses)
-
-    update_package_9(package_table, address_dict)
 
     nearest_neighbor(truck3, distances, addresses)
 
